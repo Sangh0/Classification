@@ -5,4 +5,4 @@
 ### Paper Review  
 
 ### AlexNet Architecture  
-- <img src = "">
+- <img src = "https://github.com/Sangh0/Classification/blob/main/AlexNet/figure/figure2.png?raw=true">
