@@ -19,7 +19,7 @@ class AlexNet(nn.Module):
             nn.Conv2d(96, 256, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
             nn.LocalResponseNorm(size=5, alpha=0.0001, beta=0.75, k=2),
-            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.MaxPool2d(kernel_size=3, stride=2), 
             
             nn.Conv2d(256, 384, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
