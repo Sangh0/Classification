@@ -7,7 +7,7 @@
 ### AlexNet Architecture  
 <img src = "https://github.com/Sangh0/Classification/blob/main/AlexNet/figure/figure2.png?raw=true" width=600>
 
-### Installation and prepare on anaconda
+### Installation and Prepare environment on anaconda
 ```
 conda create -n alexnet python=3.8
 conda activate alexnet
@@ -18,6 +18,7 @@ pip install -r requirements.txt
 ### dataset directory guide
 ```
 path : dataset/
+
 ├── train
 │    ├─ class 0
 │       ├─ image1.jpg
@@ -74,40 +75,54 @@ from dataset import CustomDataset
 from model import AlexNet
 from train import TrainModel
 
+Config = {
+    'data_dir': './dataset',
+    'resize_size': 256,
+    'crop_size': 224,
+    'batch_size': 32,
+    'num_classes': 2,
+    'lr': 1e-2,
+    'epochs': 90,
+    'weight_decay': 1e-5,
+    'lr_scheduling': True,
+    'train_log_step': 30,
+    'valid_log_step': 10,
+}
+
 transforms_ = transforms.Compose([
-    transforms.Resize((args.resize_size, args.resize_size)),
-    transforms.RandomCrop((args.crop_size, args.crop_size)),
+    transforms.Resize((Config['resize_size'], Config['resize_size'])),
+    transforms.RandomCrop((Config['crop_size'], Config['crop_size'])),
     transforms.RandomHorizontalFlip(p=0.5),
     transforms.ToTensor(),
     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
 ])
 
 train_loader = DataLoader(
-    CustomDataset(path=args.data_dir, subset='train', transforms_=transforms_),
-    batch_size=args.batch_size,
+    CustomDataset(path=Config['data_dir'], subset='train', transforms_=transforms_),
+    batch_size=Config['batch_size'],
     shuffle=True,
     drop_last=True,
 )
 
 valid_loader = DataLoader(
-    CustomDataset(path=args.data_dir, subset='valid', transforms_=transforms_),
-    batch_size=args.batch_size,
+    CustomDataset(path=Config['data_dir'], subset='valid', transforms_=transforms_),
+    batch_size=Config['batch_size'],
     shuffle=True,
     drop_last=True,
 )
 
 # Load AlexNet and check summary
-alexnet = AlexNet(num_classes=args.num_classes)
-summary(alexnet, (3, args.crop_size, args.crop_size), device='cpu')
+alexnet = AlexNet(num_classes=Config['num_classes'])
+summary(alexnet, (3, Config['crop_size'], Config['crop_size']), device='cpu')
 
 model = TrainModel(
     model=alexnet,
-    lr=args.lr,
-    epochs=args.epochs,
-    weight_decay=args.weight_decay,
-    lr_scheduling=args.lr_scheduling,
-    train_log_step=args.train_log_step,
-    valid_log_step=args.valid_log_step,
+    lr=Config['lr'],
+    epochs=Config['epochs'],
+    weight_decay=Config['weight_decay'],
+    lr_scheduling=Config['lr_scheduling'],
+    train_log_step=Config['train_log_step'],
+    valid_log_step=Config['valid_log_step'],
 )
 
 # Train model
