@@ -7,7 +7,7 @@
 ### AlexNet Architecture  
 <img src = "https://github.com/Sangh0/Classification/blob/main/AlexNet/figure/figure2.png?raw=true" width=600>
 
-### Installation and Prepare environment on anaconda
+### Install and Prepare environment on anaconda
 ```
 conda create -n alexnet python=3.8
 conda activate alexnet
