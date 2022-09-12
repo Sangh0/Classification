@@ -16,7 +16,7 @@ pip install -r requirements.txt
 ```
 
 ### dataset directory guide
-"""
+```
 path : dataset/
 ├── train
 │    ├─ class 0
@@ -48,7 +48,7 @@ path : dataset/
 │    ├─ ...
 │       ├─ image119.jpg
 │       ├─ ...
-"""
+```
 
 - And modify AlexNet/dataset.py to fit the dataset class directory you have
 
