@@ -15,6 +15,8 @@ def eval(model, dataset, loss_func=nn.CrossEntropyLoss()):
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    model = model.to(device)
+
     model.eval()
     batch_loss, batch_acc = 0, 0
     pbar = tqdm(enumerate(dataset), total=len(dataset))
