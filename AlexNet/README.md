@@ -14,6 +14,7 @@ conda activate alexnet
 cd AlexNet
 pip install -r requirements.txt
 ```
+### [Download Birds 400 Dataset](https://www.kaggle.com/datasets/gpiosenka/100-bird-species)
 
 ### dataset directory guide
 ```
@@ -61,6 +62,13 @@ usage: main.py [-h] [--data_dir DATA_DIR] [--resize_size RESIZE_SIZE] [--crop_si
                [--valid_log_step VALID_LOG_STEP]
 
 example: python main.py --data_dir ./dataset --batch_size 32 --num_classes 2 --train_log_step 30 --valid_log_step 10
+```
+
+### Evaluate
+```
+usage: eval.py [-h] [--data_dir DATA_DIR] [--weight WEIGHT] [--num_classes NUM_CLASSES] [--img_size IMG_SIZE]
+
+example: python eval.py --data_dir ./dataset --weight ./weights/best_weight.pt --num_classes 2 --img_size 224
 ```
 
 ### Run on Jupyter Notebook for training model
@@ -127,4 +135,48 @@ model = TrainModel(
 
 # Train model
 history = model.fit(train_loader, valid_loader)
+```
+
+### Run on Jupyter Notebook to test model
+```python
+from tqdm.auto import tqdm
+
+import torch
+import torch.nn as nn
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
+
+from model import AlexNet
+from eval import eval
+
+Config = {
+    'data_dir': './dataset',
+    'weight': './weights/best_weight.pt',
+    'num_classes': 2,
+    'img_size': 224,
+}
+
+transforms_ = transforms.Compose([
+    transforms.Resize((Config['img_size'], Config['img_size'])),
+    transforms.ToTensor(),
+    transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+])
+
+test_folder = ImageFolder(
+    root=Config['data_dir']+'/test',
+    transform=transforms_,
+)
+
+test_loader = DataLoader(
+    test_folder,
+    batch_size=1,
+    shuffle=False,
+    drop_last=False,
+)
+
+model = AlexNet(num_classes=Config['num_classes'])
+model.load_state_dict(torch.load(Config['weight']))
+
+result = eval(model, test_loader)
 ```
