@@ -97,7 +97,7 @@ Config = {
     'valid_log_step': 10,
 }
 
-transforms_ = transforms.Compose([
+train_transforms_ = transforms.Compose([
     transforms.Resize((Config['resize_size'], Config['resize_size'])),
     transforms.RandomCrop((Config['crop_size'], Config['crop_size'])),
     transforms.RandomHorizontalFlip(p=0.5),
@@ -105,15 +105,21 @@ transforms_ = transforms.Compose([
     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
 ])
 
+valid_transforms_ = transforms.Compose([
+    transforms.Resize((Config['crop_size'], Config['crop_size'])),
+    transforms.ToTensor(),
+    transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+])
+
 train_loader = DataLoader(
-    CustomDataset(path=Config['data_dir'], subset='train', transforms_=transforms_),
+    CustomDataset(path=Config['data_dir'], subset='train', transforms_=train_transforms_),
     batch_size=Config['batch_size'],
     shuffle=True,
     drop_last=True,
 )
 
 valid_loader = DataLoader(
-    CustomDataset(path=Config['data_dir'], subset='valid', transforms_=transforms_),
+    CustomDataset(path=Config['data_dir'], subset='valid', transforms_=valid_transforms_),
     batch_size=Config['batch_size'],
     shuffle=True,
     drop_last=True,
