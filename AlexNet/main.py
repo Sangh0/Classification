@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
 from torchsummary import summary
 
 from dataset import CustomDataset
@@ -38,7 +39,7 @@ def get_args_parser():
 
 def main(args):
     # Load dataset and Apply augmentation options
-    transforms_ = transforms.Compose([
+    train_transforms_ = transforms.Compose([
         transforms.Resize((args.resize_size, args.resize_size)),
         transforms.RandomCrop((args.crop_size, args.crop_size)),
         transforms.RandomHorizontalFlip(p=0.5),
@@ -46,19 +47,49 @@ def main(args):
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
+    valid_transforms_ = transforms.Compose([
+        transforms.Resize((args.crop_size, args.crop_size)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+    ])
+
+    train_folder = ImageFolder(
+        root=args.data_dir+'/train', 
+        transform=train_transforms_,
+    )
+
+    valid_folder = ImageFolder(
+        root=args.data_dir+'/valid',
+        transform=valid_transforms_,
+    )
+
     train_loader = DataLoader(
-        CustomDataset(path=args.data_dir, subset='train', transforms_=transforms_),
+        train_folder,
         batch_size=args.batch_size,
         shuffle=True,
         drop_last=True,
     )
 
     valid_loader = DataLoader(
-        CustomDataset(path=args.data_dir, subset='valid', transforms_=transforms_),
+        valid_folder,
         batch_size=args.batch_size,
         shuffle=True,
         drop_last=True,
     )
+
+    # train_loader = DataLoader(
+    #     CustomDataset(path=args.data_dir, subset='train', transforms_=train_transforms_),
+    #     batch_size=args.batch_size,
+    #     shuffle=True,
+    #     drop_last=True,
+    # )
+
+    # valid_loader = DataLoader(
+    #     CustomDataset(path=args.data_dir, subset='valid', transforms_=valid_transforms_),
+    #     batch_size=args.batch_size,
+    #     shuffle=True,
+    #     drop_last=True,
+    # )
 
     # Load AlexNet and check summary
     alexnet = AlexNet(num_classes=args.num_classes)
