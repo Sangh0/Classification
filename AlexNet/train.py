@@ -21,7 +21,13 @@ class TrainModel(object):
         
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        self.model = model.to(self.device)
+        if torch.cuda.device_count() > 1:
+            print("Let's use", torch.cuda.device_count(), "GPUs!")
+            model = nn.DataParallel(model)
+            self.model = model.to(self.device)
+
+        else:
+            self.model = model.to(self.device).to(self.device)
         
         self.loss_func = nn.CrossEntropyLoss()
         
@@ -47,6 +53,8 @@ class TrainModel(object):
         self.valid_log_step = valid_log_step
         
     def fit(self, train_data, validation_data):
+        loss_list, acc_list = [], []
+        val_loss_list, val_acc_list = [], []
         print('Start Model Training...!')
         start_training = time.time()
         pbar = tqdm(range(self.epochs), total=int(self.epochs))
@@ -82,6 +90,10 @@ class TrainModel(object):
         
         return {
             'model': self.model,
+            'loss': loss_list,
+            'acc': acc_list,
+            'val_loss': val_loss_list,
+            'val_acc': val_acc_list,
         }
         
         
@@ -145,3 +157,14 @@ class TrainModel(object):
             torch.cuda.empty_cache()
         
         return batch_loss/(batch+1), batch_acc/(batch+1)
+
+    # calculate accuracy for binary classification
+    def cal_acc(self, outputs, labels, threshold=0.5):
+        if len(outputs.shape) != 1:
+            outputs = outputs.view(-1)
+        if len(labels.shape) != 1:
+            labels = labels.view(-1)
+
+        outputs = torch.where(outputs > 0.5, 1, 0)
+        acc = (outputs == labels).sum() / len(outputs)
+        return acc
