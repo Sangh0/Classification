@@ -54,7 +54,7 @@ def main(args):
     ])
 
     train_folder = ImageFolder(
-        root=args.data_dir+'/train', 
+        root=args.data_dir+'/train',
         transform=train_transforms_,
     )
 
