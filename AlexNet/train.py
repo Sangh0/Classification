@@ -1,3 +1,4 @@
+import os
 import time
 from tqdm.auto import tqdm
 
@@ -55,6 +56,7 @@ class TrainModel(object):
             min_lr=lr*1e-2,
         )
 
+        os.makkedirs('./weights', exist_ok=True)
         self.check_point = check_point
         self.cp = CheckPoint(verbose=True)
         
