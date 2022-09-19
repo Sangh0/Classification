@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from util.callback import CheckPoint
 
 class TrainModel(object):
     
@@ -15,21 +16,25 @@ class TrainModel(object):
         epochs=90,
         weight_decay=0.0005,
         lr_scheduling=True,
+        check_point=True,
         train_log_step=10,
         valid_log_step=5,
     ):
         
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        
+
+        ######### Parallel GPU training #########
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
             model = nn.DataParallel(model)
             self.model = model.to(self.device)
 
+        ######### Single GPU training #########
         else:
-            self.model = model.to(self.device).to(self.device)
-        
-        self.loss_func = nn.CrossEntropyLoss()
+            print('Single GPU training!')
+            self.model = model.to(self.device)
+
+        self.loss_func = nn.CrossEntropyLoss().to(self.device)
         
         self.epochs = epochs
         
@@ -39,7 +44,7 @@ class TrainModel(object):
             lr=lr,
             weight_decay=weight_decay,
         )
-        
+
         self.lr_scheduling = lr_scheduling
         self.lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer,
@@ -47,15 +52,19 @@ class TrainModel(object):
             factor=0.1,
             patience=10,
             verbose=True,
+            min_lr=lr*1e-2,
         )
+
+        self.check_point = check_point
+        self.cp = CheckPoint(verbose=True)
         
         self.train_log_step = train_log_step
         self.valid_log_step = valid_log_step
         
     def fit(self, train_data, validation_data):
+        print('Start Model Training...!')
         loss_list, acc_list = [], []
         val_loss_list, val_acc_list = [], []
-        print('Start Model Training...!')
         start_training = time.time()
         pbar = tqdm(range(self.epochs), total=int(self.epochs))
         for epoch in pbar:
@@ -65,12 +74,18 @@ class TrainModel(object):
             train_loss, train_acc = self.train_on_batch(
                 train_data, self.train_log_step,
             )
+
+            loss_list.append(train_loss)
+            acc_list.append(train_acc)
             
             ######### Validate Phase #########
             valid_loss, valid_acc = self.validate_on_batch(
                 validation_data, self.valid_log_step,
             )
             
+            val_loss_list.append(valid_loss)
+            val_acc_list.append(valid_acc)
+
             end_time = time.time()
             
             print(f'\n{"="*30} Epoch {epoch+1}/{self.epochs} {"="*30}'
@@ -79,12 +94,16 @@ class TrainModel(object):
             print(f'\ntrain average loss: {train_loss:.3f}'
                   f'  accuracy: {train_acc:.3f}')
             print(f'\nvalid average loss: {valid_loss:.3f}'
-                  f'  accuracy: {valid_loss:.3f}')
+                  f'  accuracy: {valid_acc:.3f}')
             print(f'\n{"="*80}')
             
             if self.lr_scheduling:
                 self.lr_scheduler.step(valid_loss)
-                
+
+            if self.check_point:
+                path = f'./weights/check_point_{epoch+1}.pt'
+                self.cp(valid_loss, self.model, path)
+
         end_training = time.time()
         print(f'\nTotal time for training is {end_training-start_training:.2}s')
         
@@ -127,14 +146,14 @@ class TrainModel(object):
         
         
     def train_on_batch(self, train_data, log_step):
+        self.model.train()
         batch_loss, batch_acc = 0, 0
         for batch, (images, labels) in enumerate(train_data):
-            self.model.train()
             images = images.to(self.device)
             labels = labels.to(self.device)
-            
+
             self.optimizer.zero_grad()
-            
+
             outputs = self.model(images)
             loss = self.loss_func(outputs, labels)
             output_index = torch.argmax(outputs, dim=1)
@@ -142,6 +161,7 @@ class TrainModel(object):
             
             loss.backward()
             self.optimizer.step()
+            
             
             if batch == 0:
                 print(f'\n{" "*10} Train Step {" "*10}')
@@ -157,14 +177,3 @@ class TrainModel(object):
             torch.cuda.empty_cache()
         
         return batch_loss/(batch+1), batch_acc/(batch+1)
-
-    # calculate accuracy for binary classification
-    def cal_acc(self, outputs, labels, threshold=0.5):
-        if len(outputs.shape) != 1:
-            outputs = outputs.view(-1)
-        if len(labels.shape) != 1:
-            labels = labels.view(-1)
-
-        outputs = torch.where(outputs > 0.5, 1, 0)
-        acc = (outputs == labels).sum() / len(outputs)
-        return acc
