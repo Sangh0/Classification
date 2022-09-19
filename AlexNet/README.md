@@ -69,7 +69,7 @@ usage: eval.py [-h] [--use_benchmark USE_BENCHMARK] [--data_dir DATA_DIR] [--wei
 example: python eval.py --use_benchmark True --weight ./weights/best_weight.pt
 ```
 
-### Run on Jupyter Notebook for training model
+### Run on Jupyter Notebook for training model when you use CIFAR-10 dataset
 ```python
 import torch
 import torch.nn as nn
@@ -158,7 +158,7 @@ model = TrainModel(
 history = model.fit(train_loader, valid_loader)
 ```
 
-### Run on Jupyter Notebook to test model
+### Run on Jupyter Notebook to test model when you use CIFAR-10 dataset
 ```python
 import torch
 import torchvision.transforms as transforms
