@@ -5,6 +5,7 @@ from tqdm.auto import tqdm
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
+import torchvision.datasets as dset
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 
@@ -47,34 +48,55 @@ def eval(model, dataset, loss_func=nn.CrossEntropyLoss()):
 
 def get_args_parser():
     parser = argparse.ArgumentParser(description='Evaluating AlexNet', add_help=False)
-    parser.add_argument('--data_dir', type=str, required=True,
+    parser.add_argument('--use_benchmark', type=bool, required=True,
+                        help='write bool type parameter setting when you used training')
+    parser.add_argument('--data_dir', type=str, default=None,
                         help='directory where your dataset is located')
     parser.add_argument('--weight', type=str, required=True,
                         help='load weight file of trained model')
-    parser.add_argument('--num_classes', type=int, required=True,
+    parser.add_argument('--num_classes', type=int, default=10,
                         help='class number of dataset')
     parser.add_argument('--img_size', type=int, default=224,
                         help='image size used when training')
     return 
 
 def main(args):
+    assert (args.use_benchmark==True and args.data_dir is None) or \
+        (args.use_benchmark==False and args.data_dir is not None)
+        
     transforms_ = transforms.Compose([
         transforms.Resize((args.img_size, args.img_size)),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
-    test_folder = ImageFolder(
-        root=args.data_dir+'/test',
-        transform=transforms_,
-    )
+    if args.use_benchmark:
+        test_data = dset.CIFAR10(
+            root='./data',
+            train=False,
+            download=True,
+            transform=transforms_,
+        )
 
-    test_loader = DataLoader(
-        test_folder,
-        batch_size=1,
-        shuffle=False,
-        drop_last=False,
-    )
+        test_loader = DataLoader(
+            test_data,
+            batch_size=1,
+            shuffle=False,
+            drop_last=False,
+        )
+
+    else:
+        test_folder = ImageFolder(
+            root=args.data_dir+'/test',
+            transform=transforms_,
+        )
+
+        test_loader = DataLoader(
+            test_folder,
+            batch_size=1,
+            shuffle=False,
+            drop_last=False,
+        )
 
     model = AlexNet(num_classes=args.num_classes)
     model.load_state_dict(torch.load(args.weight))
