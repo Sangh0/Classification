@@ -4,4 +4,4 @@
   
 - This task is basic task in deep learning of computer vision   
 - It's the task of classifying what class it is given an image    
-- There are typical models: AlexNet, VGGNet, ResNet, etc.  
+- There are typical models: AlexNet, VGGNet, ResNet, etc.   
