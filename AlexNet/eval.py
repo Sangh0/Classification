@@ -70,33 +70,19 @@ def main(args):
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
-    if args.use_benchmark:
-        test_data = dset.CIFAR10(
-            root='./data',
-            train=False,
-            download=True,
-            transform=transforms_,
-        )
+    test_data = dset.CIFAR10(
+        root='./data',
+        train=False,
+        download=True,
+        transform=transforms_,
+    )
 
-        test_loader = DataLoader(
-            test_data,
-            batch_size=1,
-            shuffle=False,
-            drop_last=False,
-        )
-
-    else:
-        test_folder = ImageFolder(
-            root=args.data_dir+'/test',
-            transform=transforms_,
-        )
-
-        test_loader = DataLoader(
-            test_folder,
-            batch_size=1,
-            shuffle=False,
-            drop_last=False,
-        )
+    test_loader = DataLoader(
+        test_data,
+        batch_size=args.batch_size,
+        shuffle=False,
+        drop_last=True,
+    )
 
     model = AlexNet(num_classes=args.num_classes)
     model.load_state_dict(torch.load(args.weight))
