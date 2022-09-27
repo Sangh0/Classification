@@ -48,10 +48,6 @@ def eval(model, dataset, loss_func=nn.CrossEntropyLoss()):
 
 def get_args_parser():
     parser = argparse.ArgumentParser(description='Evaluating AlexNet', add_help=False)
-    parser.add_argument('--use_benchmark', type=bool, required=True,
-                        help='write bool type parameter setting when you used training')
-    parser.add_argument('--data_dir', type=str, default=None,
-                        help='directory where your dataset is located')
     parser.add_argument('--weight', type=str, required=True,
                         help='load weight file of trained model')
     parser.add_argument('--num_classes', type=int, default=10,
@@ -61,9 +57,7 @@ def get_args_parser():
     return 
 
 def main(args):
-    assert (args.use_benchmark==True and args.data_dir is None) or \
-        (args.use_benchmark==False and args.data_dir is not None)
-        
+
     transforms_ = transforms.Compose([
         transforms.Resize((args.img_size, args.img_size)),
         transforms.ToTensor(),
@@ -79,7 +73,7 @@ def main(args):
 
     test_loader = DataLoader(
         test_data,
-        batch_size=args.batch_size,
+        batch_size=1,
         shuffle=False,
         drop_last=True,
     )
