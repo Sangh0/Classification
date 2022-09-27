@@ -1,5 +1,7 @@
 Pillow==9.2.0
-torch==1.12.1
+torch==1.10.2
 torchsummary==1.5.1
-torchvision==0.13.1
+torchvision==0.11.1
 tqdm==4.64.0
+scikit-learn==1.1.2
+numpy==1.23.1
