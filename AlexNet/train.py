@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from util.callback import CheckPoint
+from util.callback import CheckPoint, EarlyStopping
 
 class TrainModel(object):
     
@@ -17,23 +17,31 @@ class TrainModel(object):
         epochs=90,
         weight_decay=0.0005,
         lr_scheduling=True,
-        check_point=True,
-        train_log_step=10,
-        valid_log_step=5,
+        check_point=False,
+        early_stop=True,
+        es_path=None,
+        train_log_step=300,
+        valid_log_step=50,
     ):
+        
+        assert (early_stop==True and es_path is not None) or \
+            (early_stop==False and es_path is None), \
+            'If you set early stop, then es_path must be not None'
         
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        ######### Parallel GPU training #########
+        ######### Multi GPU training #########
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
             model = nn.DataParallel(model)
             self.model = model.to(self.device)
+        ######################################
 
         ######### Single GPU training #########
         else:
             print('Single GPU training!')
             self.model = model.to(self.device)
+        #######################################
 
         self.loss_func = nn.CrossEntropyLoss().to(self.device)
         
@@ -59,6 +67,10 @@ class TrainModel(object):
         os.makkedirs('./weights', exist_ok=True)
         self.check_point = check_point
         self.cp = CheckPoint(verbose=True)
+
+        es_path = './weights./'+es_path if es_path is not None else './weights/es_weight.pt'
+        self.early_stop = early_stop
+        self.es = EarlyStopping(verbose=True, patience=15, path=es_path)
         
         self.train_log_step = train_log_step
         self.valid_log_step = valid_log_step
@@ -106,6 +118,14 @@ class TrainModel(object):
                 path = f'./weights/check_point_{epoch+1}.pt'
                 self.cp(valid_loss, self.model, path)
 
+            if self.early_stop:
+                self.es(valid_loss, self.model)
+                if self.es.early_stop:
+                    print('\n##########################\n'
+                          '##### Early Stopping #####\n'
+                          '##########################')
+                    break
+
         end_training = time.time()
         print(f'\nTotal time for training is {end_training-start_training:.2}s')
         
@@ -116,7 +136,6 @@ class TrainModel(object):
             'val_loss': val_loss_list,
             'val_acc': val_acc_list,
         }
-        
         
     @torch.no_grad()
     def validate_on_batch(self, validation_data, log_step):
@@ -145,7 +164,6 @@ class TrainModel(object):
             torch.cuda.empty_cache()
             
         return batch_loss/(batch+1), batch_acc/(batch+1)
-        
         
     def train_on_batch(self, train_data, log_step):
         self.model.train()
