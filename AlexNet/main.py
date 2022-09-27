@@ -1,25 +1,22 @@
 import argparse
+import numpy as np
+from sklearn.model_selection import train_test_split
+from multiprocessing import cpu_count
 
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, SubsetRandomSampler
 from torchvision.datasets import ImageFolder
 from torchsummary import summary
 
-from dataset import CustomDataset
-from model import get_alexnet
 from train import TrainModel
 
 def get_args_parser():
     parser = argparse.ArgumentParser(description='Training AlexNet', add_help=False)
-    parser.add_argument('--use_benchmark', type=bool, required=True,
-                        help='if you use benchmark (ex: cifar10), then write True, or False')
-    parser.add_argument('--data_dir', type=str, default=None,
-                        help='directory where your dataset is located, write it if you set use_benchmakr to False')
     parser.add_argument('--pretrained', type=bool, default=True,
-                        help='use pretrained model')
+                        help='load pretrained model')
     parser.add_argument('--resize_size', type=int, default=256,
                         help='image resize size before applying cropping')
     parser.add_argument('--crop_size', type=int, default=224,
@@ -36,8 +33,12 @@ def get_args_parser():
                         help='class number of dataset')
     parser.add_argument('--lr_scheduling', default=True, type=bool,
                         help='apply learning rate scheduler')
-    parser.add_argument('--check_point', default=True, type=bool,
+    parser.add_argument('--check_point', default=False, type=bool,
                         help='save weight file when achieve the best score in validation phase')
+    parser.add_argument('--early_stop', default=True, type=bool,
+                        help='set early stopping if loss of valid is increased')
+    parser.add_argument('--es_path', default='./weights/es_weight.pt', type=str,
+                        help='directory for saving early stopping weights')
     parser.add_argument('--train_log_step', type=int, default=40,
                         help='print log of iteration in training loop')
     parser.add_argument('--valid_log_step', type=int, default=10,
@@ -64,69 +65,59 @@ def main(args):
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
-    if args.use_benchmark:
-        train_data = dset.CIFAR10(
-            root='./data', 
-            train=True, 
-            download=True, 
-            transform=train_transforms_
-        )
+    train_data = dset.CIFAR10(
+        root='./data', 
+        train=True, 
+        download=True, 
+        transform=train_transforms_
+    )
 
-        train_loader = DataLoader(
-            train_data,
-            batch_size=16,
-            shuffle=True,
-            drop_last=True,
-        )
+    test_data = dset.CIFAR10(
+        root='./data',
+        train=False,
+        download=True,
+        transform=valid_transforms_,
+    )
 
-        test_data = dset.CIFAR10(
-            root='./data',
-            train=False,
-            download=True,
-            transform=valid_transforms_,
-        )
+    # stratify split
+    train_index, valid_index = train_test_split(
+        np.arange(len(train_data)),
+        test_size=0.2,
+        shuffle=True,
+        stratify=train_data.targets,
+    )
 
-        test_loader = DataLoader(
-            test_data,
-            batch_size=16,
-            shuffle=False,
-            drop_last=True,
-        )
+    train_loader = DataLoader(
+        train_data,
+        batch_size=args.batch_size,
+        sampler=SubsetRandomSampler(train_index),
+        drop_last=True,
+        nun_workers=int(cpu_count()/2),
+    )
 
-    else:
-        train_folder = ImageFolder(
-            root=args.data_dir+'/train',
-            transform=train_transforms_,
-        )
+    valid_loader = DataLoader(
+        train_data,
+        batch_size=args.batch_size,
+        sampler=SubsetRandomSampler(train_index),
+        drop_last=True,
+        nun_workers=int(cpu_count()/2),
+    )
 
-        valid_folder = ImageFolder(
-            root=args.data_dir+'/valid',
-            transform=valid_transforms_,
-        )
-
-        train_loader = DataLoader(
-            train_folder,
-            batch_size=args.batch_size,
-            shuffle=True,
-            drop_last=True,
-        )
-
-        valid_loader = DataLoader(
-            valid_folder,
-            batch_size=args.batch_size,
-            shuffle=True,
-            drop_last=True,
-        )
+    test_loader = DataLoader(
+        test_data,
+        batch_size=args.batch_size,
+        shuffle=False,
+        drop_last=True,
+    )
 
     # Load AlexNet and check summary
     if args.pretrained:
-        if args.use_benckmark:
-            alexnet = get_alexnet(pretrained=True, num_classes=10)
-        else:
-            alexnet = get_alexnet(pretrained=True, num_classes=args.num_classes)
+        from pretrained_model import AlexNet
+        alexnet = AlexNet(num_clases=args.num_classes)
     
     else:
-        alexnet = get_alexnet(pretrained=False, num_classes=args.num_classes)
+        from model import AlexNet
+        alexnet = AlexNet(num_classes=args.num_classes)
 
     summary(alexnet, (3, args.crop_size, args.crop_size), device='cpu')
 
@@ -137,6 +128,8 @@ def main(args):
         weight_decay=args.weight_decay,
         lr_scheduling=args.lr_scheduling,
         check_point=args.check_point,
+        early_stop=args.early_stop,
+        es_path=args.es_path,
         train_log_step=args.train_log_step,
         valid_log_step=args.valid_log_step,
     )
