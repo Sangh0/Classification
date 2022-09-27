@@ -53,33 +53,36 @@ path : dataset/
 
 ### Train
 ```
-usage: main.py [-h] [--use_benchmark USE_BENCHMARK] [--data_dir DATA_DIR] [--pretrained PRETRAINED] \
-               [--resize_size RESIZE_SIZE] [--crop_size CROP_SIZE] [--lr LR] [--epochs EPOCHS] \
-               [--batch_size BATCH_SIZE] [--weight_decay WEIGHT_DECAY] [--num_classes NUM_CLASSES] \
-               [--lr_scheduling LR_SCHEDULING] [--train_log_step TRAIN_LOG_STEP] [--valid_log_step VALID_LOG_STEP]
+usage: main.py [-h] [--pretrained PRETRAINED] [--resize_size RESIZE_SIZE] [--crop_size CROP_SIZE] \
+               [--lr LR] [--epochs EPOCHS] [--batch_size BATCH_SIZE] [--weight_decay WEIGHT_DECAY] \
+               [--num_classes NUM_CLASSES] [--lr_scheduling LR_SCHEDULING] [--check_point CHECK_POINT] \
+               [--early_stop EARLY_STOP] [--es_path ES_PATH] [--train_log_step TRAIN_LOG_STEP] \
+               [--valid_log_step VALID_LOG_STEP]
 
-example: python main.py --use_benchmark True --pretrained True --batch_size 32 --train_log_step 50 --valid_log_step 20
+example: python main.py --pretrained True --batch_size 128 --lr 0.01 --epochs 90 --weight_decay 1e-5
 ```
 
 ### Evaluate
 ```
-usage: eval.py [-h] [--use_benchmark USE_BENCHMARK] [--data_dir DATA_DIR] [--weight WEIGHT] \
-               [--num_classes NUM_CLASSES] [--img_size IMG_SIZE]
+usage: eval.py [-h] [--weight WEIGHT] [--num_classes NUM_CLASSES] [--img_size IMG_SIZE]
 
-example: python eval.py --use_benchmark True --weight ./weights/best_weight.pt
+example: python eval.py --weight ./weights/best_weight.pt --num_classes 10 --img_size 224
 ```
 
 ### Run on Jupyter Notebook for training model when you use CIFAR-10 dataset
 ```python
+import numpy as np
+from sklearn.model_selection import train_test_split
+from multiprocessing import cpu_count
+
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, SubsetRandomSampler
 from torchsummary import summary
 
-from dataset import CustomDataset
-from model import get_alexnet
+from pretrained_model import AlexNet
 from train import TrainModel
 
 Config = {
@@ -91,7 +94,9 @@ Config = {
     'epochs': 90,
     'weight_decay': 5e-5,
     'lr_scheduling': True,
-    'check_point': True,
+    'check_point': False,
+    'early_stop': True,
+    'es_path': 'es_weight.pt',
     'train_log_step': 50,
     'valid_log_step': 20,
 }
@@ -112,35 +117,38 @@ valid_transforms_ = transforms.Compose([
 ])
 
 train_data = dset.CIFAR10(
-    root='./data',
-    train=True,
-    download=True,
-    transform=train_transforms_,
+    root='./data', 
+    train=True, 
+    download=True, 
+    transform=train_transforms_
 )
 
-test_data = dset.CIFAR10(
-    root='./data',
-    train=False,
-    download=True,
-    transform=valid_transforms_,
+# stratify split
+train_index, valid_index = train_test_split(
+    np.arange(len(train_data)),
+    test_size=0.2,
+    shuffle=True,
+    stratify=train_data.targets,
 )
 
 train_loader = DataLoader(
     train_data,
-    batch_size=Config['batch_size'],
-    shuffle=True,
+    batch_size=args.batch_size,
+    sampler=SubsetRandomSampler(train_index),
     drop_last=True,
+    nun_workers=int(cpu_count()/2),
 )
 
 valid_loader = DataLoader(
-    test_data,
-    batch_size=Config['batch_size'],
-    shuffle=True,
+    train_data,
+    batch_size=args.batch_size,
+    sampler=SubsetRandomSampler(train_index),
     drop_last=True,
+    nun_workers=int(cpu_count()/2),
 )
 
 # Load AlexNet and check summary
-alexnet = get_alexnet(pretrained=True, num_classes=Config['num_classes'])
+alexnet = AlexNet(num_classes=args.num_classes)
 summary(alexnet, (3, Config['crop_size'], Config['crop_size']), device='cpu')
 
 model = TrainModel(
@@ -150,6 +158,8 @@ model = TrainModel(
     weight_decay=Config['weight_decay'],
     lr_scheduling=Config['lr_scheduling'],
     check_point=Config['check_point'],
+    early_stop=Config['early_stop'],
+    es_path=Config['es_weight.pt'],
     train_log_step=Config['train_log_step'],
     valid_log_step=Config['valid_log_step'],
 )
@@ -164,7 +174,7 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
-from model import AlexNet
+from pretrained_model import AlexNet
 from eval import eval
 
 Config = {
@@ -178,11 +188,6 @@ transforms_ = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
 ])
-
-test_folder = ImageFolder(
-    root=Config['data_dir']+'/test',
-    transform=transforms_,
-)
 
 test_data = dset.CIFAR10(
     root='./data',
