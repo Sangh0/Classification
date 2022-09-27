@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
-import torchvision.models as models
 
-class AlexNet_self(nn.Module):
+class AlexNet(nn.Module):
     
     def __init__(
         self,
@@ -11,7 +10,7 @@ class AlexNet_self(nn.Module):
         num_classes=1000,
         dropout=0.5,
     ):
-        super(AlexNet_self, self).__init__()
+        super(AlexNet, self).__init__()
         
         self.features = nn.Sequential(
             nn.Conv2d(in_dim, filters[0], kernel_size=11, stride=4, padding=2),
@@ -66,35 +65,3 @@ class AlexNet_self(nn.Module):
         
         nn.init.constant_(self.features[0].bias, 0)
         nn.init.constant_(self.features[8].bias, 0)
-
-class AlexNet_pretrained(nn.Module):
-
-    def __init__(
-        self,
-        num_classes=1000,
-    ):
-        super().__init__()
-        self.model = models.alexnet(pretrained=True)
-        self.model.classifier[-1] = nn.Linear(4096, num_classes)
-
-    def forward(self, x):
-        return self.model(x)
-
-
-def get_alexnet(
-    num_classes: int, 
-    pretrained: bool=True, 
-    in_dim: int=None,
-    dropout: float=None, 
-    filters: list=None,
-):
-    if pretrained==True:
-        if (in_dim, dropout, filters) is not None:
-            raise ValueError('if pretrained parameter is True, then other parameters must be None')
-        else:
-            model = AlexNet_pretrained(num_classes=num_classes)
-    
-    else:
-        model = AlexNet_self(num_classes=num_classes)
-
-    return model
