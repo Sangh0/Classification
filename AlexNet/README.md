@@ -133,7 +133,7 @@ train_index, valid_index = train_test_split(
 
 train_loader = DataLoader(
     train_data,
-    batch_size=args.batch_size,
+    batch_size=Config['batch_size'],
     sampler=SubsetRandomSampler(train_index),
     drop_last=True,
     nun_workers=int(cpu_count()/2),
@@ -141,14 +141,14 @@ train_loader = DataLoader(
 
 valid_loader = DataLoader(
     train_data,
-    batch_size=args.batch_size,
+    batch_size=Config['batch_size'],
     sampler=SubsetRandomSampler(train_index),
     drop_last=True,
     nun_workers=int(cpu_count()/2),
 )
 
 # Load AlexNet and check summary
-alexnet = AlexNet(num_classes=args.num_classes)
+alexnet = AlexNet(num_classes=Config['num_classes'])
 summary(alexnet, (3, Config['crop_size'], Config['crop_size']), device='cpu')
 
 model = TrainModel(
